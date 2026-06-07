@@ -697,25 +697,29 @@ async function clearAll(){
   renderAll();
 }
 
-async function startScan(target){
+function startScan(target){
   document.getElementById('scanner-area-'+target).style.display='block';
-  try{
-    await Quagga.init({
+  new Promise((resolve,reject)=>{
+    Quagga.init({
       inputStream:{type:'LiveStream',target:document.getElementById('scanner-video-'+target),constraints:{facingMode:'environment'}},
       decoder:{readers:['code_128_reader','ean_reader','code_39_reader','upc_reader']}
-    },err=>{if(err){alert('Camera not available.');stopScan(target)}});
-    Quagga.start(); scanning=true;
+    },err=>err?reject(err):resolve());
+  }).then(()=>{
+    Quagga.offDetected();
+    Quagga.start();
+    scanning=true;
     Quagga.onDetected(result=>{
       if(!scanning)return;
       const code=result.codeResult.code;
-      if(target==='tech'){document.getElementById('part-number').value=code; autofillDesc()}
+      if(target==='tech'){document.getElementById('part-number').value=code; autofillDesc();}
       else document.getElementById('receive-part-num').value=code;
       stopScan(target);
     });
-  }catch(e){alert('Camera not available.'); stopScan(target)}
+  }).catch(()=>{alert('Camera not available. Make sure you are using Safari and have granted camera permission.');stopScan(target);});
 }
 function stopScan(target){
-  scanning=false; try{Quagga.stop()}catch(e){}
+  scanning=false;
+  try{Quagga.offDetected(); Quagga.stop();}catch(e){}
   document.getElementById('scanner-area-'+target).style.display='none';
 }
 
